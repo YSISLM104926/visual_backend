@@ -127,17 +127,9 @@ async function run() {
             console.log(`Server is running on http://localhost:${port}`);
         });
 
-    } finally {
+    } finally { 
     }
 }
-run().catch(console.dir);
+run().catch();
 
 
-// Test route
-app.get('/', (req, res) => {
-    const serverStatus = {
-        message: 'Server is running smoothly',
-        timestamp: new Date()
-    };
-    res.json(serverStatus);
-});
