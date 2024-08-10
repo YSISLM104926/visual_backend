@@ -137,10 +137,17 @@ async function run() {
         app.listen(port, () => {
             console.log(`Server is running on http://localhost:${port}`);
         });
+        
+        
 
     } finally {
     }
+    
 }
 run().catch();
+
+app.get('/', async(req,res)=> {
+    return res.send({message: 'server is running'})
+})
 
 
