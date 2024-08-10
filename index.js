@@ -10,7 +10,6 @@ const port = process.env.PORT || 5000;
 
 const uri = `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@cluster0.b0di4c5.mongodb.net/?appName=Cluster0`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -18,22 +17,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors({
-    origin: 'http://localhost:5173', 
+    origin: 'http://localhost:5173', // Update this with your client URL
     allowedHeaders: ['Authorization', 'Content-Type'],
 }));
 
-
+// Middleware to authenticate the token
 function authenticateToken(req, res, next) {
-    console.log('Request Headers:', req.headers); 
+    console.log('Request Headers:', req.headers); // Add this line
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; 
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
 
-    if (!token) return res.sendStatus(401); 
+    if (!token) return res.sendStatus(401); // Unauthorized
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403); 
+        if (err) return res.sendStatus(403); // Forbidden
         req.user = user;
-        next(); 
+        next(); // Continue to the next middleware or route handler
     });
 }
 
@@ -114,6 +113,19 @@ async function run() {
             }
         })
 
+        app.get('/data/:id', async (req, res) => {
+            const search = req?.params?.id;
+            try {
+                const query = { _id: new ObjectId(search) };
+                const result = await dataCollection.findOne(query);
+                console.log(result);
+                res.send(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send(error);
+            }
+        })
+
         app.patch('/data/:id',authenticateToken, async (req, res) => {
             const id = req.params.id;
             const updatedData = req.body;
@@ -137,17 +149,10 @@ async function run() {
         app.listen(port, () => {
             console.log(`Server is running on http://localhost:${port}`);
         });
-        
-        
 
     } finally {
     }
-    
 }
 run().catch();
-
-app.get('/', async(req,res)=> {
-    return res.send({message: 'server is running'})
-})
 
 
