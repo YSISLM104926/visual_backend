@@ -7,15 +7,35 @@ const bodyParser = require('body-parser');
 require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
+
+const uri = `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@cluster0.b0di4c5.mongodb.net/?appName=Cluster0`;
+const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(bodyParser.json()); 
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors({
+    origin: 'http://localhost:5173', // Update this with your client URL
+    allowedHeaders: ['Authorization', 'Content-Type'],
+}));
 
-const uri = `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@cluster0.b0di4c5.mongodb.net/?appName=Cluster0`;
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+// Middleware to authenticate the token
+function authenticateToken(req, res, next) {
+    console.log('Request Headers:', req.headers); // Add this line
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
+
+    if (!token) return res.sendStatus(401); // Unauthorized
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403); // Forbidden
+        req.user = user;
+        next(); // Continue to the next middleware or route handler
+    });
+}
+
 
 async function run() {
     try {
@@ -28,7 +48,7 @@ async function run() {
         const dataCollection = db.collection('Datas');
         const usersCollection = db.collection('users');
 
-        
+
         // User Login
         app.post('/api/auth/login', async (req, res) => {
             const { email, password } = req.body;
@@ -39,8 +59,6 @@ async function run() {
                 if (!user) {
                     return res.status(401).json({ message: 'Invalid email or password' });
                 }
-
-    
                 const isPasswordValid = user?.password === password;
                 if (!isPasswordValid) {
                     return res.status(401).json({ message: 'Invalid email or password' });
@@ -64,19 +82,25 @@ async function run() {
             }
         });
 
-        app.get('/data', async (req, res) => {
+        app.get('/data',authenticateToken, async (req, res) => {
             const search = {};
+            const ress = req?.user?.email;
+            const query = {email: ress};
+            const email_res = await usersCollection.findOne(query);
+            if(!email_res) {
+                return res.status(401).json({ message: 'Unauthorized access' });
+            }
             const result = await dataCollection.find(search).toArray();
             res.send(result);
         })
 
-        app.post('/data', async (req, res) => {
+        app.post('/data',authenticateToken, async (req, res) => {
             const search = req.body;
             const result = await dataCollection.insertOne(search);
             res.send(result);
         })
 
-        app.delete('/data/:id', async (req, res) => {
+        app.delete('/data/:id',authenticateToken, async (req, res) => {
             const search = req?.params?.id;
             try {
                 const query = { _id: new ObjectId(search) };
@@ -89,29 +113,15 @@ async function run() {
             }
         })
 
-
-        app.get('/data/:id', async (req, res) => {
-            const search = req?.params?.id;
-            try {
-                const query = { _id: new ObjectId(search) };
-                const result = await dataCollection.findOne(query);
-                console.log(result);
-                res.send(result);
-            } catch (error) {
-                console.error(error);
-                res.status(500).send(error);
-            }
-        })
-
-        app.patch('/data/:id', async (req, res) => {
-            const id = req.params.id; 
+        app.patch('/data/:id',authenticateToken, async (req, res) => {
+            const id = req.params.id;
             const updatedData = req.body;
             try {
                 const result = await dataCollection.updateOne(
-                    { _id: new ObjectId(id) }, 
-                    { $set: updatedData } 
+                    { _id: new ObjectId(id) },
+                    { $set: updatedData }
                 );
-                console.log('resss',result);
+                console.log('resss', result);
                 if (result.matchedCount > 0) {
                     res.status(200).send({ message: 'Data updated successfully', result });
                 } else {
@@ -122,12 +132,12 @@ async function run() {
                 res.status(500).send({ message: 'Failed to update data', error });
             }
         });
-        
+
         app.listen(port, () => {
             console.log(`Server is running on http://localhost:${port}`);
         });
 
-    } finally { 
+    } finally {
     }
 }
 run().catch();
