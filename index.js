@@ -25,7 +25,7 @@ async function run() {
         // database
         const db = client.db('visualizerDashboard');
         // Collections
-        const dataCollection = db.collection('mainData');
+        const dataCollection = db.collection('Datas');
         const usersCollection = db.collection('users');
 
         
