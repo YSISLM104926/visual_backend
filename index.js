@@ -10,6 +10,7 @@ const port = process.env.PORT || 5000;
 
 const uri = `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@cluster0.b0di4c5.mongodb.net/?appName=Cluster0`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -17,22 +18,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors({
-    origin: 'http://localhost:5173', // Update this with your client URL
+    origin: 'http://localhost:5173', 
     allowedHeaders: ['Authorization', 'Content-Type'],
 }));
 
-// Middleware to authenticate the token
-function authenticateToken(req, res, next) {
-    console.log('Request Headers:', req.headers); // Add this line
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
 
-    if (!token) return res.sendStatus(401); // Unauthorized
+function authenticateToken(req, res, next) {
+    console.log('Request Headers:', req.headers); 
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; 
+
+    if (!token) return res.sendStatus(401); 
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403); // Forbidden
+        if (err) return res.sendStatus(403); 
         req.user = user;
-        next(); // Continue to the next middleware or route handler
+        next(); 
     });
 }
 
